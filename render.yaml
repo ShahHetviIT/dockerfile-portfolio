@@ -1,13 +1,15 @@
 services:
-  # MongoDB Service
-  - type: worker
+  # MongoDB Service (Private Service for internal access)
+  - type: pserv
     name: portfolio-mongodb
     env: docker
     dockerContext: .
     dockerfilePath: Dockerfile.mongodb
-    # Better to use a standard image if possible, but Render Blueprints for Docker usually need a path.
-    # Alternatively, we can use a Disk for persistence.
-    plan: free # or starter
+    plan: starter # Private services usually require a starter plan
+    disk:
+      name: mongodb-data
+      mountPath: /data/db
+      sizeGB: 1
     envVars:
       - key: MONGO_INITDB_ROOT_USERNAME
         value: admin
@@ -16,7 +18,7 @@ services:
       - key: MONGO_INITDB_DATABASE
         value: portfolio
 
-  # Backend Service
+  # Backend Service (Web Service)
   - type: web
     name: portfolio-backend
     env: docker
@@ -29,20 +31,16 @@ services:
         value: 5000
       - key: NODE_ENV
         value: production
-      - key: MONGODB_URI
-        fromService:
-          name: portfolio-mongodb
-          type: worker
-          property: host
-        # We'll need to construct the full URI in the code or via other env vars
       - key: MONGO_ROOT_USER
         value: admin
       - key: MONGO_ROOT_PASSWORD
         fromService:
           name: portfolio-mongodb
-          type: worker
-          property: envVar
+          type: pserv
           envVarKey: MONGO_INITDB_ROOT_PASSWORD
+      - key: MONGODB_URI
+        # Constructing the URI manually using the generated password
+        value: mongodb://admin:${MONGO_ROOT_PASSWORD}@portfolio-mongodb:27017/portfolio?authSource=admin
       - key: JWT_SECRET
         generateValue: true
       - key: ADMIN_USERNAME
@@ -50,7 +48,7 @@ services:
       - key: ADMIN_PASSWORD
         value: admin123
 
-  # Frontend Service
+  # Frontend Service (Web Service)
   - type: web
     name: portfolio-frontend
     env: docker
@@ -59,7 +57,10 @@ services:
     plan: free
     envVars:
       - key: VITE_API_URL
+        # We use host here to satisfy the Blueprint, but for an SPA, 
+        # the user will likely need to update this to the public URL 
+        # in the Render dashboard after the first deployment.
         fromService:
           name: portfolio-backend
           type: web
-          property: url
+          property: host
