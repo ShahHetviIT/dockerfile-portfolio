@@ -1,0 +1,28 @@
+# Backend Dockerfile
+FROM node:20-slim
+
+# Install git and other essential tools
+RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /app
+
+# Clone the repository (using develop branch as it contains the code)
+ARG REPO_URL=https://github.com/ShahHetviIT/Hetvi-Portfolio.git
+ARG BRANCH=develop
+RUN git clone -b ${BRANCH} ${REPO_URL} .
+
+# Debug: list files to verify structure
+RUN ls -la
+
+# Navigate to backend directory
+WORKDIR /app/backend
+
+# Install dependencies
+RUN npm install
+
+# Expose port
+EXPOSE 5000
+
+# Start command: seed then start dev
+CMD ["sh", "-c", "npm run seed && npm run dev"]
