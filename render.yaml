@@ -1,24 +1,5 @@
 services:
-  # MongoDB Service (Private Service for internal access)
-  - type: pserv
-    name: portfolio-mongodb
-    env: docker
-    dockerContext: .
-    dockerfilePath: Dockerfile.mongodb
-    plan: starter # Private services usually require a starter plan
-    disk:
-      name: mongodb-data
-      mountPath: /data/db
-      sizeGB: 1
-    envVars:
-      - key: MONGO_INITDB_ROOT_USERNAME
-        value: admin
-      - key: MONGO_INITDB_ROOT_PASSWORD
-        generateValue: true
-      - key: MONGO_INITDB_DATABASE
-        value: portfolio
-
-  # Backend Service (Web Service)
+  # Backend Service (Web Service - FREE tier)
   - type: web
     name: portfolio-backend
     env: docker
@@ -31,16 +12,8 @@ services:
         value: 5000
       - key: NODE_ENV
         value: production
-      - key: MONGO_ROOT_USER
-        value: admin
-      - key: MONGO_ROOT_PASSWORD
-        fromService:
-          name: portfolio-mongodb
-          type: pserv
-          envVarKey: MONGO_INITDB_ROOT_PASSWORD
       - key: MONGODB_URI
-        # Constructing the URI manually using the generated password
-        value: mongodb://admin:${MONGO_ROOT_PASSWORD}@portfolio-mongodb:27017/portfolio?authSource=admin
+        sync: false # User will set this manually in Render dashboard to their MongoDB Atlas URI
       - key: JWT_SECRET
         generateValue: true
       - key: ADMIN_USERNAME
@@ -48,7 +21,7 @@ services:
       - key: ADMIN_PASSWORD
         value: admin123
 
-  # Frontend Service (Web Service)
+  # Frontend Service (Web Service - FREE tier)
   - type: web
     name: portfolio-frontend
     env: docker
@@ -57,9 +30,6 @@ services:
     plan: free
     envVars:
       - key: VITE_API_URL
-        # We use host here to satisfy the Blueprint, but for an SPA, 
-        # the user will likely need to update this to the public URL 
-        # in the Render dashboard after the first deployment.
         fromService:
           name: portfolio-backend
           type: web
